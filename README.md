@@ -1,14 +1,5 @@
 # My pack
 
-> **This is a template.** Click *Use this template* on GitHub, then rename
-> `my_pack` everywhere (`git grep -l my_pack`, plus the `my_pack.info.yml` and
-> `assets/my_pack.css` filenames) to your module's machine name — or skip the
-> template entirely and run `atelier pack new <name>`, which scaffolds these
-> same files with the name already in place.
->
-> Generated from the `atelier` CLI's embedded templates
-> (aincient-labs/manager) — file issues and improvements there.
-
 An [Atelier CMS](https://aincient-labs.com) component pack — an ordinary Drupal
 module whose components carry `thirdPartySettings.atelier`, admitted to the
 page agent's palette through the same gate Atelier's own components pass.
@@ -48,5 +39,21 @@ against the committed preset and fails on drift.
 ## Ship
 
 `docker build .` produces your deployable image: the pinned Atelier appliance
-plus this pack baked in (see `Dockerfile`). Deployment is an image tag; an
-Atelier upgrade is a PR bumping the `FROM` pin.
+plus this pack baked in (see `Dockerfile`). Every push runs the reference
+pipeline (`.github/workflows/build.yml`):
+
+1. rebuild the CSS against the committed preset and fail on drift (armed once
+   the committed `assets/` file is a Tailwind build — the scaffold's
+   hand-written file passes untouched);
+2. `docker build .`;
+3. boot that image against a throwaway database (`compose.ci.yaml`) and let
+   converge enable the pack — the exact path a production boot takes;
+4. `drush atelier:pack-validate` (the admission gate), `drush
+   atelier:kind-check`, and a front-page + gallery render smoke;
+5. on `main`: re-stamp the `dev.atelier.extensions` label from the validated
+   image — the registration the Atelier manager's pre-pull extension diff
+   relies on — and push to `ghcr.io/<owner>/<repo>`.
+
+Deployment is that image tag: point your appliance's `AINCIENT_IMAGE` at it.
+An Atelier upgrade is a PR bumping the `FROM` pin in the `Dockerfile`; the
+same pipeline then proves the pack against the new version before it ships.
